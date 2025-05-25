@@ -28,6 +28,12 @@ def load_new_banned_word(strippedmessage):
     with open("banned_shit.txt", "a", encoding="utf-8") as file:
         file.write(f"{nl}{strippedmessage}")
 
+#function to add brainrot words to brainrot list.
+def load_new_brainrot_word(strippedmessage):
+    nl = '\n'
+    with open("brainrot_shit.txt", "a", encoding="utf-8") as file:
+        file.write(f"{nl}{strippedmessage}")
+
 #function to remove banned word from banlist.
 def remove_banned_word(strippedmessage):
     with open("banned_shit.txt", "r", encoding="utf-8") as f:
@@ -37,6 +43,22 @@ def remove_banned_word(strippedmessage):
         idx = normalized_lines.index(strippedmessage)
         del lines[idx]
         with open("banned_shit.txt", "w", encoding="utf-8") as f:
+            f.seek(0)
+            f.write('\n'.join(lines)) 
+            f.truncate()
+    else:
+        print("huh, somehow this shit managed to bypass the command level check. your kinda fucked.")
+
+
+#function to remove brainrot word from brainrot list.
+def remove_brainrot_word(strippedmessage):
+    with open("brainrot_shit.txt", "r", encoding="utf-8") as f:
+        lines = [line.rstrip('\n') for line in f if line.strip()]
+    normalized_lines = [line.strip().lower() for line in lines]
+    if strippedmessage in normalized_lines:
+        idx = normalized_lines.index(strippedmessage)
+        del lines[idx]
+        with open("brainrot_shit.txt", "w", encoding="utf-8") as f:
             f.seek(0)
             f.write('\n'.join(lines)) 
             f.truncate()
@@ -147,6 +169,46 @@ async def on_message(message):
             await message.channel.send("Invalid permissions to execute command, gangy.")
 
 
+
+
+
+    #appends shit to the brainrot_shit.txt, it should hopefully not mess with formatting.
+    if message.content.startswith("!addbrainrotword"):
+        if admin_role_id in author_roles or mod_role_id in author_roles:
+            if len(message.content) >= 17 and message.content[16].isspace():
+                strippedmessage = message.content[17:].lower()
+                if strippedmessage not in brainrot_words:
+                    load_new_brainrot_word(strippedmessage)
+                    await message.channel.send(f"Added '{strippedmessage}' to brainrot list, boss. Reloading .txt file...")
+                    brainrot_words = load_word_list("brainrot_shit.txt")
+                else:
+                    await message.channel.send(f"That word is already in the list, bud.")
+            else:
+                await message.channel.send("Invalid syntax.")
+        else:
+            await message.channel.send("Invalid permissions to execute command, gangy.")
+
+
+    #same as above but removes words.
+    if message.content.startswith("!removebrainrotword"):
+        if admin_role_id in author_roles or mod_role_id in author_roles:
+            if len(message.content) >= 20 and message.content[19].isspace():
+                strippedmessage = message.content[20:].lower()
+                if strippedmessage in brainrot_words:
+                    remove_brainrot_word(strippedmessage)
+                    await message.channel.send(f"'{strippedmessage}' is no longer brainrot. Reloading .txt file...")
+                    brainrot_words = load_word_list("brainrot_shit.txt")
+                else:
+                    await message.channel.send(f"That word isnt brainrot, bud.")
+            else:
+                await message.channel.send("Invalid syntax.")
+        else:
+            await message.channel.send("Invalid permissions to execute command, gangy.")
+
+
+
+
+
     #prints the banlist to #bot-testing.
     if message.content.startswith("!checkbanlist"):
         if mod_role_id in author_roles or admin_role_id in author_roles:
@@ -158,6 +220,19 @@ async def on_message(message):
                 print("Bot testing doesnt exist, i guess.")
         else:
             await message.channel.send("Invalid permissions to execute command, gangy.")
+
+    #prints the brainrot list to #bot-testing.
+    if message.content.startswith("!checkbrainrotlist"):
+        if mod_role_id in author_roles or admin_role_id in author_roles:
+            await message.channel.send(f"Printing brainrot list in <#{bot_testing_id}>, chief.")
+            bottestchannel = client.get_channel(bot_testing_id)
+            if bottestchannel is not None:
+                await bottestchannel.send(f"`{brainrot_words}`")
+            else:
+                print("Bot testing doesnt exist, i guess.")
+        else:
+            await message.channel.send("Invalid permissions to execute command, gangy.")
+
 
     #fuck off, it didnt work the efficent way
     if any(word in message.content.lower() for word in exempt_words):
