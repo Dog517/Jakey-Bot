@@ -107,6 +107,8 @@ furry_channel_id = config['furry_id']
 mod_role_id = config['mod_role_id']
 admin_role_id = config['admin_role_id']
 bot_testing_id = config['bot_testing_id']
+unverified_id = config['unverified_id']
+individualist_id = config['individualist_id']
 
 
 @client.event
@@ -140,7 +142,8 @@ async def on_message(message):
     global banned_words
 
     #gets the roles of a message author for purposes of checking perms
-    author_roles = [role.id for role in message.author.roles]
+    if message.guild and message.author.roles:
+        author_roles = [role.id for role in message.author.roles]
 
     #reloads the text config files
     if message.content.startswith("!reloadwordconfig"):
@@ -296,7 +299,7 @@ async def on_message(message):
             await message.channel.send(f"Printing exempt word list in <#{bot_testing_id}>, chief.")
             bottestchannel = client.get_channel(bot_testing_id)
             if bottestchannel is not None:
-                await bottestchannel.send(f"`{exempt_words}`")
+                await bottestchannel.send(f"{exempt_words}")
             else:
                 print("Bot testing doesnt exist, i guess.")
         else:
@@ -321,8 +324,54 @@ async def on_message(message):
         print("Pong!")
 
 
+    #verify command. Checks if the user has unverified role, sends them a dm, awaits their response, and then sends that to #bot-output.
+    if message.content.startswith("!verify"):
+        if unverified_id in author_roles:
+            user = message.author
+            nl = '\n'
+            await user.send(f"1. Have you read the rules? {nl} 2. Who is John Galt? {nl} 3. How did you find us? {nl} 4. Please give a basic summary of your political beliefs, if any. {nl} 5. Are you at least 16 years of age?")
+            def check(message):
+                return message.author == user and isinstance(message.channel, discord.DMChannel)
+
+            # Wait for reply from the user in dms
+            reply = await client.wait_for('message', check=check, timeout=60)
+
+            log_channel = client.get_channel(bot_testing_id)
+            if log_channel:
+                await log_channel.send(f"Application from **{user}**:{nl} `{reply.content}` {nl}{nl} <@&{admin_role_id}> <@&{mod_role_id}>")
+        else:
+            await message.channel.send("your already verified, silly")
+
+
+
+    #approves somebody to be verified
+    if message.content.startswith("!approve"):
+        if mod_role_id in author_roles or admin_role_id in author_roles:
+            username = message.content[9:].strip()
+            target_user = None
+            for member in message.guild.members:
+                if member.name == username:
+                    target_user = member
+                    break
+            if target_user is None:
+                await message.channel.send("Nobodys got that name, dude.")
+            unverified_role = message.guild.get_role(unverified_id)
+            individualist_role = message.guild.get_role(individualist_id)
+            if unverified_role in target_user.roles and individualist_role not in target_user.roles:
+                await target_user.remove_roles(unverified_role)
+                await target_user.add_roles(individualist_role)
+                await message.channel.send(f"{target_user} has been granted citizenship.")
+                print(f"approved {target_user} for entry")
+            else:
+                await message.channel.send("That guys already verified.")
+        else:
+            await message.channel.send("Invalid permissions to execute command, gangy.")
+
+
+
+
     #server bump reminder
-    elif message.author.id == disboard_id:
+    if message.author.id == disboard_id:
         print(f"okie, registered a message from disboard")
         asyncio.create_task(delayed_response(message.channel))
 
