@@ -34,6 +34,12 @@ def load_new_brainrot_word(strippedmessage):
     with open("brainrot_shit.txt", "a", encoding="utf-8") as file:
         file.write(f"{nl}{strippedmessage}")
 
+#function to add exempt words to exempt list.
+def load_new_exempt_word(strippedmessage):
+    nl = '\n'
+    with open("exempt_shit.txt", "a", encoding="utf-8") as file:
+        file.write(f"{nl}{strippedmessage}")
+
 #function to remove banned word from banlist.
 def remove_banned_word(strippedmessage):
     with open("banned_shit.txt", "r", encoding="utf-8") as f:
@@ -59,6 +65,21 @@ def remove_brainrot_word(strippedmessage):
         idx = normalized_lines.index(strippedmessage)
         del lines[idx]
         with open("brainrot_shit.txt", "w", encoding="utf-8") as f:
+            f.seek(0)
+            f.write('\n'.join(lines)) 
+            f.truncate()
+    else:
+        print("huh, somehow this shit managed to bypass the command level check. your kinda fucked.")
+
+#function to remove exempt word from exempt list.
+def remove_exempt_word(strippedmessage):
+    with open("exempt_shit.txt", "r", encoding="utf-8") as f:
+        lines = [line.rstrip('\n') for line in f if line.strip()]
+    normalized_lines = [line.strip().lower() for line in lines]
+    if strippedmessage in normalized_lines:
+        idx = normalized_lines.index(strippedmessage)
+        del lines[idx]
+        with open("exempt_shit.txt", "w", encoding="utf-8") as f:
             f.seek(0)
             f.write('\n'.join(lines)) 
             f.truncate()
@@ -208,6 +229,42 @@ async def on_message(message):
 
 
 
+    #appends shit to the exempt_shit.txt, it should hopefully not mess with formatting.
+    if message.content.startswith("!addexemptword"):
+        if admin_role_id in author_roles or mod_role_id in author_roles:
+            if len(message.content) >= 15 and message.content[14].isspace():
+                strippedmessage = message.content[15:].lower()
+                if strippedmessage not in exempt_words:
+                    load_new_exempt_word(strippedmessage)
+                    await message.channel.send(f"Added '{strippedmessage}' to exempt word list, boss. Reloading .txt file...")
+                    exempt_words = load_word_list("exempt_shit.txt")
+                else:
+                    await message.channel.send(f"That word is already in the list, bud.")
+            else:
+                await message.channel.send("Invalid syntax.")
+        else:
+            await message.channel.send("Invalid permissions to execute command, gangy.")
+
+
+    #same as above but removes words.
+    if message.content.startswith("!removeexemptword"):
+        if admin_role_id in author_roles or mod_role_id in author_roles:
+            if len(message.content) >= 18 and message.content[17].isspace():
+                strippedmessage = message.content[18:].lower()
+                if strippedmessage in exempt_words:
+                    remove_exempt_word(strippedmessage)
+                    await message.channel.send(f"'{strippedmessage}' is no longer exempt. Reloading .txt file...")
+                    exempt_words = load_word_list("exempt_shit.txt")
+                else:
+                    await message.channel.send(f"That word isnt exempt, bud.")
+            else:
+                await message.channel.send("Invalid syntax.")
+        else:
+            await message.channel.send("Invalid permissions to execute command, gangy.")
+
+
+
+
 
     #prints the banlist to #bot-testing.
     if message.content.startswith("!checkbanlist"):
@@ -228,6 +285,18 @@ async def on_message(message):
             bottestchannel = client.get_channel(bot_testing_id)
             if bottestchannel is not None:
                 await bottestchannel.send(f"`{brainrot_words}`")
+            else:
+                print("Bot testing doesnt exist, i guess.")
+        else:
+            await message.channel.send("Invalid permissions to execute command, gangy.")
+    
+    #prints the exempt list to #bot-testing.
+    if message.content.startswith("!checkexemptlist"):
+        if mod_role_id in author_roles or admin_role_id in author_roles:
+            await message.channel.send(f"Printing exempt word list in <#{bot_testing_id}>, chief.")
+            bottestchannel = client.get_channel(bot_testing_id)
+            if bottestchannel is not None:
+                await bottestchannel.send(f"`{exempt_words}`")
             else:
                 print("Bot testing doesnt exist, i guess.")
         else:
@@ -258,7 +327,7 @@ async def on_message(message):
         asyncio.create_task(delayed_response(message.channel))
 
     #does no brainrot logic
-    if any(word in message.content.lower() for word in brainrot_words) and message.author.id != milton_id and message.channel.id != shitpost_channel_id and message.channel.id != brainrot_channel_id and message.channel.id != furry_channel_id:
+    if any(word in message.content.lower() for word in brainrot_words) and message.author.id != milton_id and message.channel.id != shitpost_channel_id and message.channel.id != brainrot_channel_id and message.channel.id != furry_channel_id and not message.content.startswith("!addbrainrotword") and not message.content.startswith("!removebrainrotword"):
         #fuck this took to long, but basically if a message contains an exempt word (word that contains a banned term within it but the full word is fine) then it ignores that instance of the banned word, however if there is another instance of a banned term in that same message, it still deletes it. My tiny furry brain needs a break.
         if has_exempt_word:
                 cleaned_message = " ".join(word for word in message.content.lower().split() if word not in exempt_words)

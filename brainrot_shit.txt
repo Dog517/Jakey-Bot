@@ -16,3 +16,5 @@ huzz
 fuzz
 chuzz
 hawk tuah
+tuff
+gurt
